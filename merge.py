@@ -41,7 +41,7 @@ def main():
     args = parser.parse_args()
 
     merged = merge_safetensors(args.base_model, args.second_model, args.p, args.lambda_val)
-    save_file(merged, args.output_file_path)
+    save_file(merged, args.output_model)
 
 if __name__ == '__main__':
     main()
