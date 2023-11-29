@@ -12,7 +12,7 @@ Combine capabilities from multiple models. Built for Stable Diffusion XL / Stabl
 |-----------|-----------------|-----------|
 | **sd_xl_turbo** | Attempting 1024 | <img src="assets/before_xl_turbo.png" alt="SDXL turbo attempting to render at 1024" width="256" height="256"> |
 | **sdxl 1024** | Attempting to use SDTurboScheduler | <img src="assets/before_xl.png" alt="SDXL attempting to use SDTurboScheduler" width="256" height="256"> |
-| **merged** | - | <img src="assets/after.png" alt="Merged model successfully rendering 1024" width="256" height="256"> |
+| **merged** | Mario merged | <img src="assets/after.png" alt="Merged model successfully rendering 1024" width="256" height="256"> |
 
 ## Usage
 
