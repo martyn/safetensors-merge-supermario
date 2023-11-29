@@ -12,7 +12,7 @@ Combine capabilities from multiple models. Built for Stable Diffusion XL / Stabl
 |-----------|-----------------|-----------|
 | **sd_xl_turbo** | Attempting 1024 | <img src="assets/before_xl_turbo.png" alt="SDXL turbo attempting to render at 1024" width="256" height="256"> |
 | **sdxl base 1.0** | Attempting to use SDTurboScheduler | <img src="assets/before_xl.png" alt="SDXL attempting to use SDTurboScheduler" width="256" height="256"> |
-| **merged** | Mario merged(image includes a ComfyUI Workflow) | <img src="assets/after.png" alt="Merged model successfully rendering 1024" width="256" height="256"> |
+| **merged** | Mario merged | <img src="assets/after.png" alt="Merged model successfully rendering 1024" width="256" height="256"> |
 
 ## Usage
 
@@ -22,9 +22,14 @@ python3 merge.py -p 0.13 -lambda 3.0 sdxl_base.safetensors sd_xl_turbo_1.0_fp16.
 
 Note: This also works with base and turbo arguments reversed.
 
+
 ## Models:
 
 * https://huggingface.co/martyn/sdxl-turbo-mario-merge - SD Turbo XL merged with SDXL Base
+
+## ComfyUI workflow:
+
+* [ComfyUI merged base, turbo at 1024](assets/comfyui-sdxl-base-turbo-merged.json)
 
 ## References:
 
