@@ -1,5 +1,6 @@
-import torch
+import argparse
 import numpy as np
+import torch
 from safetensors.torch import safe_open, save_file
 
 def merge_tensors(tensor1, tensor2, p):
@@ -13,9 +14,8 @@ def merge_tensors(tensor1, tensor2, p):
     delta_hat = delta_tilde / (1 - p)
     return delta_hat
 
-def merge_safetensors(file_path1, file_path2, p):
+def merge_safetensors(file_path1, file_path2, p, lambda_val):
     merged_tensors = {}
-    lam = 3.0
 
     with safe_open(file_path1, framework="pt", device="cpu") as f1, safe_open(file_path2, framework="pt", device="cpu") as f2:
         keys1 = set(f1.keys())
@@ -25,19 +25,23 @@ def merge_safetensors(file_path1, file_path2, p):
         for key in common_keys:
             tensor1 = f1.get_tensor(key)
             tensor2 = f2.get_tensor(key)
-            merged_tensors[key] = tensor1 + lam * merge_tensors(tensor1, tensor2, p)
+            merged_tensors[key] = tensor1 + lambda_val * merge_tensors(tensor1, tensor2, p)
             print("merging", key)
 
     return merged_tensors
 
-# Usage
-file_path1 = 'sd_xl_turbo_1.0_fp16.safetensors'
-file_path2 = 'sdxl.safetensors'
-p = 0.1  # Dropout probability
-merged = merge_safetensors(file_path1, file_path2, p)
+def main():
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description='Merge two safetensor model files.')
+    parser.add_argument('base_model', type=str, help='The base model safetensor file')
+    parser.add_argument('second_model', type=str, help='The second model safetensor file')
+    parser.add_argument('output_model', type=str, help='The output merged model safetensor file')
+    parser.add_argument('-p', type=float, default=0.5, help='Dropout probability')
+    parser.add_argument('-lambda', dest='lambda_val', type=float, default=1.0, help='Scaling factor for the weight delta')
+    args = parser.parse_args()
 
-# Save the merged tensors to a new safetensors file
-output_file_path = 'merged_output.safetensors'
-print(f"saving to {output_file_path}")
-save_file(merged, output_file_path)
+    merged = merge_safetensors(args.base_model, args.second_model, args.p, args.lambda_val)
+    save_file(merged, args.output_file_path)
 
+if __name__ == '__main__':
+    main()
