@@ -21,9 +21,9 @@ Combine capabilities from multiple models. Built for Stable Diffusion XL / Stabl
 
 ## Models:
 
-* [https://huggingface.co/martyn/sdxl-turbo-mario-merge](SD Turbo XL merged with SDXL Base - Supports 1024x1024)
+* https://huggingface.co/martyn/sdxl-turbo-mario-merge - SD Turbo XL merged with SDXL Base
 
 ## References:
 
-* [https://arxiv.org/pdf/2311.03099.pdf] (Language Models are Super Mario: Absorbing Abilities from Homologous Models as a Free Lunch)
-* [https://stability.ai/research/adversarial-diffusion-distillation] (SXDL Turbo - Adversarial Diffusion Distillation)
+* https://arxiv.org/pdf/2311.03099.pdf - Language Models are Super Mario: Absorbing Abilities from Homologous Models as a Free Lunch
+* https://stability.ai/research/adversarial-diffusion-distillation - SXDL Turbo - Adversarial Diffusion Distillation
