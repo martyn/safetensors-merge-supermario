@@ -19,8 +19,11 @@ Combine capabilities from multiple models. Built for Stable Diffusion XL / Stabl
 `python merge.py -p 0.1 -lambda 3 base_model.safetensors second_model.safetensors merged_output.safetensors`
 
 
-Models:
-[](Uploading... SD Turbo XL Merged - Supports 1024x1024)
+## Models:
 
-References:
+* [https://huggingface.co/martyn/sdxl-turbo-mario-merge](SD Turbo XL merged with SDXL Base - Supports 1024x1024)
+
+## References:
+
 * [https://arxiv.org/pdf/2311.03099.pdf] (Language Models are Super Mario: Absorbing Abilities from Homologous Models as a Free Lunch)
+* [https://stability.ai/research/adversarial-diffusion-distillation] (SXDL Turbo - Adversarial Diffusion Distillation)
