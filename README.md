@@ -6,8 +6,9 @@ Combine any two models using a Super Mario merge as described in the linked whit
 
 Combine capabilities from multiple models. Works with:
 
-* Stable Diffusion (1.5, XL, XL Turbo)
+* Stable Diffusion (1.5, XL/XL Turbo)
 * LLMs(Mistral, Llama, etc)
+* LoRas(must be same size)
 * Any two homologous models
 
 ### Example
@@ -36,6 +37,7 @@ Note: This also works with arguments reversed.
 
 * https://huggingface.co/martyn/sdxl-turbo-mario-merge - SD Turbo XL merged with SDXL Base
 * https://civitai.com/models/215796 - Top Rated - TurboXL+LCM - Super Mario Merge
+* https://huggingface.co/martyn/llama-megamerge-dare-13b - A llama 13b mega merge created using `hf_merge.py`
 
 ## ComfyUI workflow
 
@@ -43,6 +45,7 @@ Note: This also works with arguments reversed.
 
 ## Changelog
 
+* Dec 12 2023: Added `hf_merge.py` for merging hf repos.
 * Dec 12 2023: Added support for folders. You can now merge LLMs(mistral, llama, etc) and other large models. Folders with `.bin` files are supported - the first specified model in the cli must be in `.safetensors` format.
 * Nov 28 2023: Initial release supporting stable diffusion.
 
