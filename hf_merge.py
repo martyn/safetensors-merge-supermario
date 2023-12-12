@@ -75,7 +75,7 @@ def process_repos(output_dir, base_model, staging_model, repo_list_file, p, lamb
 
     # Initial download for 'base_model'
     download_repo(repos_to_process[0].strip(), base_model, dry_run)
-    tensor_map = merge.map_tensors_to_files(base_model, output_dir)
+    tensor_map = merge.map_tensors_to_files(base_model)
 
     for i, repo in enumerate(repos_to_process[1:]):
         repo_name = repo.strip()

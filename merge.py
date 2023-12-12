@@ -74,7 +74,7 @@ def merge_folder(tensor_map, directory_path, p, lambda_val):
                 tensor_map[key]['tensor'] = tensor1 + lambda_val * merge_tensors(tensor1, tensor2, p)
     return tensor_map
 
-def map_tensors_to_files(directory_path, output_path=None):
+def map_tensors_to_files(directory_path):
     tensor_map = {}
 
     for filename in os.listdir(directory_path):
@@ -84,10 +84,15 @@ def map_tensors_to_files(directory_path, output_path=None):
             for key in keys:
                 tensor = f.get_tensor(key)
                 tensor_map[key] = {'filename':filename, 'shape':tensor.shape, 'tensor': tensor}
-        elif output_path != None and not filename.endswith(".bin") and not os.path.isdir(file_path):
-            shutil.copyfile(file_path, output_path+'/'+filename)
 
     return tensor_map
+
+def copy_nontensor_files(from_path, to_path):
+    for filename in os.listdir(from_path):
+        file_path = os.path.join(from_path, filename)
+        if from_path != to_path and not filename.startswith(".") and not filename.startswith("README") and not filename.endswith(".bin") and not filename.endswith(".safetensors") and not os.path.isdir(file_path):
+            print(f"Copying {file_path} to {to_path}")
+            shutil.copyfile(file_path, to_path+'/'+filename)
 
 def save_tensor_map(tensor_map, output_folder):
     metadata = {'format': 'pt'}
@@ -119,8 +124,9 @@ def main():
         if not os.path.exists(args.output_model):
             os.makedirs(args.output_model)
 
-        tensor_map = map_tensors_to_files(args.base_model, args.output_model)
+        tensor_map = map_tensors_to_files(args.base_model)
         tensor_map = merge_folder(tensor_map, args.second_model, args.p, args.lambda_val)
+        copy_nontensor_files(args.base_model, args.output_model)
         save_tensor_map(tensor_map, args.output_model)
     else:
         merged = merge_safetensors(args.base_model, args.second_model, args.p, args.lambda_val)
