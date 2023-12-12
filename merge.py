@@ -7,7 +7,7 @@ from safetensors.torch import safe_open, save_file
 
 def merge_tensors(tensor1, tensor2, p):
     # Calculate the delta of the weights
-    delta = tensor2 - tensor1
+    delta = tensor2.to(tensor1.dtype).to(tensor1.device) - tensor1
     # Generate the mask m^t from Bernoulli distribution
     m = torch.from_numpy(np.random.binomial(1, p, delta.shape)).to(tensor1.dtype).to(tensor1.device)
     # Apply the mask to the delta to get δ̃^t
@@ -32,33 +32,59 @@ def merge_safetensors(file_path1, file_path2, p, lambda_val):
 
     return merged_tensors
 
-def merge_folder(tensor_map, directory_path, p, lambda_val, extension=".safetensors"):
+class BinDataHandler():
+    def __init__(self, data):
+        self.data = data
+
+    def get_tensor(self, key):
+        return self.data[key]
+
+def read_tensors(file_path, ext):
+    if ext == ".safetensors" and file_path.endswith(".safetensors"):
+        f = safe_open(file_path, framework="pt", device="cpu")
+        return f, set(f.keys())
+    if ext == ".bin" and file_path.endswith(".bin"):
+        data = torch.load(file_path)
+        f = BinDataHandler(data)
+        return f, set(data.keys())
+    return None, None
+
+def merge_folder(tensor_map, directory_path, p, lambda_val):
     keys1 = set(tensor_map.keys())
+    # Some repos have both bin and safetensors, choose safetensors if so
+    ext = None
     for filename in os.listdir(directory_path):
-        if filename.endswith(extension):
-            file_path = os.path.join(directory_path, filename)
-            with safe_open(file_path, framework="pt", device="cpu") as f:
-                keys2 = set(f.keys())
-                common_keys = keys1.intersection(keys2)
-                for key in common_keys:
-                    tensor1 = tensor_map[key]['tensor']
-                    tensor2 = f.get_tensor(key)
-                    print("merging", key)
-                    tensor_map[key]['tensor'] = tensor1 + lambda_val * merge_tensors(tensor1, tensor2, p)
+        # Default to safetensors
+        if filename.endswith(".safetensors"):
+            ext = ".safetensors"
+        if filename.endswith(".bin") and ext is None:
+            ext = ".bin"
+    if ext is None:
+        raise "Could not find model files"
+
+    for filename in os.listdir(directory_path):
+        file_path = os.path.join(directory_path, filename)
+        f, keys2 = read_tensors(file_path, ext)
+        if keys2:
+            common_keys = keys1.intersection(keys2)
+            for key in common_keys:
+                tensor1 = tensor_map[key]['tensor']
+                tensor2 = f.get_tensor(key)
+                print("merging", key)
+                tensor_map[key]['tensor'] = tensor1 + lambda_val * merge_tensors(tensor1, tensor2, p)
     return tensor_map
 
-def map_tensors_to_files(directory_path, output_path, extension=".safetensors"):
+def map_tensors_to_files(directory_path, output_path=None):
     tensor_map = {}
 
     for filename in os.listdir(directory_path):
         file_path = os.path.join(directory_path, filename)
-        if filename.endswith(extension):
-            with safe_open(file_path, framework="pt", device="cpu") as f:
-                keys = set(f.keys())
-                for key in keys:
-                    tensor = f.get_tensor(key)
-                    tensor_map[key] = {'filename':filename, 'shape':tensor.shape, 'tensor': tensor}
-        else:
+        f, keys = read_tensors(file_path, '.safetensors')
+        if keys:
+            for key in keys:
+                tensor = f.get_tensor(key)
+                tensor_map[key] = {'filename':filename, 'shape':tensor.shape, 'tensor': tensor}
+        elif output_path != None and not filename.endswith(".bin") and not os.path.isdir(file_path):
             shutil.copyfile(file_path, output_path+'/'+filename)
 
     return tensor_map
