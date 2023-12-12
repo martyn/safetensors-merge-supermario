@@ -1,10 +1,12 @@
 import argparse
 import numpy as np
+import os
+import shutil
 import torch
 from safetensors.torch import safe_open, save_file
 
 def merge_tensors(tensor1, tensor2, p):
-    # Calculate the delta of the weights (weights0 - weights1)
+    # Calculate the delta of the weights
     delta = tensor2 - tensor1
     # Generate the mask m^t from Bernoulli distribution
     m = torch.from_numpy(np.random.binomial(1, p, delta.shape)).to(tensor1.dtype).to(tensor1.device)
@@ -30,6 +32,53 @@ def merge_safetensors(file_path1, file_path2, p, lambda_val):
 
     return merged_tensors
 
+def merge_folder(tensor_map, directory_path, p, lambda_val, extension=".safetensors"):
+    keys1 = set(tensor_map.keys())
+    for filename in os.listdir(directory_path):
+        if filename.endswith(extension):
+            file_path = os.path.join(directory_path, filename)
+            with safe_open(file_path, framework="pt", device="cpu") as f:
+                keys2 = set(f.keys())
+                common_keys = keys1.intersection(keys2)
+                for key in common_keys:
+                    tensor1 = tensor_map[key]['tensor']
+                    tensor2 = f.get_tensor(key)
+                    print("merging", key)
+                    tensor_map[key]['tensor'] = tensor1 + lambda_val * merge_tensors(tensor1, tensor2, p)
+    return tensor_map
+
+def map_tensors_to_files(directory_path, output_path, extension=".safetensors"):
+    tensor_map = {}
+
+    for filename in os.listdir(directory_path):
+        file_path = os.path.join(directory_path, filename)
+        if filename.endswith(extension):
+            with safe_open(file_path, framework="pt", device="cpu") as f:
+                keys = set(f.keys())
+                for key in keys:
+                    tensor = f.get_tensor(key)
+                    tensor_map[key] = {'filename':filename, 'shape':tensor.shape, 'tensor': tensor}
+        else:
+            shutil.copyfile(file_path, output_path+'/'+filename)
+
+    return tensor_map
+
+def save_tensor_map(tensor_map, output_folder):
+    metadata = {'format': 'pt'}
+    by_filename = {}
+
+    for key, value in tensor_map.items():
+        filename = value["filename"]
+        tensor = value["tensor"]
+        if filename not in by_filename:
+            by_filename[filename] = {}
+        by_filename[filename][key] = tensor
+
+    for filename in sorted(by_filename.keys()):
+        output_file = output_folder+'/'+filename
+        print("Saving:", output_file)
+        save_file(by_filename[filename], output_file, metadata=metadata)
+
 def main():
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description='Merge two safetensor model files.')
@@ -40,8 +89,16 @@ def main():
     parser.add_argument('-lambda', dest='lambda_val', type=float, default=1.0, help='Scaling factor for the weight delta')
     args = parser.parse_args()
 
-    merged = merge_safetensors(args.base_model, args.second_model, args.p, args.lambda_val)
-    save_file(merged, args.output_model)
+    if os.path.isdir(args.base_model):
+        if not os.path.exists(args.output_model):
+            os.makedirs(args.output_model)
+
+        tensor_map = map_tensors_to_files(args.base_model, args.output_model)
+        tensor_map = merge_folder(tensor_map, args.second_model, args.p, args.lambda_val)
+        save_tensor_map(tensor_map, args.output_model)
+    else:
+        merged = merge_safetensors(args.base_model, args.second_model, args.p, args.lambda_val)
+        save_file(merged, args.output_model)
 
 if __name__ == '__main__':
     main()
