@@ -4,7 +4,11 @@ Combine any two models using a Super Mario merge as described in the linked whit
 
 ## About
 
-Combine capabilities from multiple models. Built for Stable Diffusion XL / Stable Diffusion XL Turbo but it matches any safetensor keys with the same name.
+Combine capabilities from multiple models. Works with:
+
+* Stable Diffusion (1.5, XL, XL Turbo)
+* LLMs(Mistral, Llama, etc)
+* Any two homologous models
 
 ### Example
 
@@ -17,21 +21,32 @@ Combine capabilities from multiple models. Built for Stable Diffusion XL / Stabl
 ## Usage
 
 ```
+python3 merge.py -p [weight drop probability] -lambda [scaling factor] [base_safetensors_model_file_or_folder] [model_to_merge] [output_path]
+```
+
+### Example
+
+```
 python3 merge.py -p 0.13 -lambda 3.0 sdxl_base.safetensors sd_xl_turbo_1.0_fp16.safetensors sdxl_merged.safetensors
 ```
 
-Note: This also works with base and turbo arguments reversed.
+Note: This also works with arguments reversed.
 
-## Models:
+## Models
 
 * https://huggingface.co/martyn/sdxl-turbo-mario-merge - SD Turbo XL merged with SDXL Base
 * https://civitai.com/models/215796 - Top Rated - TurboXL+LCM - Super Mario Merge
 
-## ComfyUI workflow:
+## ComfyUI workflow
 
 * [ComfyUI merged base, turbo at 1024](assets/comfyui-sdxl-base-turbo-merged.json)
 
-## References:
+## Changelog
+
+* Dec 12 2023: Added support for folders. You can now merge LLMs(mistral, llama, etc) and other large models. Folders with `.bin` files are supported - the first specified model in the cli must be in `.safetensors` format.
+* Nov 28 2023: Initial release supporting stable diffusion.
+
+## References
 
 * https://arxiv.org/pdf/2311.03099.pdf - Language Models are Super Mario: Absorbing Abilities from Homologous Models as a Free Lunch
 * https://github.com/yule-BUAA/MergeLM - GitHub for the linked whitepaper
