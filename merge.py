@@ -28,6 +28,7 @@ def merge_safetensors(file_path1, file_path2, p, lambda_val):
         for key in common_keys:
             tensor1 = f1.get_tensor(key)
             tensor2 = f2.get_tensor(key)
+            tensor1, tensor2 = resize_tensors(tensor1, tensor2)
             merged_tensors[key] = tensor1 + lambda_val * merge_tensors(tensor1, tensor2, p)
             print("merging", key)
 
@@ -50,6 +51,28 @@ def read_tensors(file_path, ext):
         return f, set(data.keys())
     return None, None
 
+def resize_tensors(tensor1, tensor2):
+    if len(tensor1.shape) not in [1, 2]:
+        return tensor1, tensor2
+
+    # Pad along the last dimension (width)
+    if tensor1.shape[-1] < tensor2.shape[-1]:
+        padding_size = tensor2.shape[-1] - tensor1.shape[-1]
+        tensor1 = F.pad(tensor1, (0, padding_size, 0, 0))
+    elif tensor2.shape[-1] < tensor1.shape[-1]:
+        padding_size = tensor1.shape[-1] - tensor2.shape[-1]
+        tensor2 = F.pad(tensor2, (0, padding_size, 0, 0))
+
+    # Pad along the first dimension (height)
+    if tensor1.shape[0] < tensor2.shape[0]:
+        padding_size = tensor2.shape[0] - tensor1.shape[0]
+        tensor1 = F.pad(tensor1, (0, 0, 0, padding_size))
+    elif tensor2.shape[0] < tensor1.shape[0]:
+        padding_size = tensor1.shape[0] - tensor2.shape[0]
+        tensor2 = F.pad(tensor2, (0, 0, 0, padding_size))
+
+    return tensor1, tensor2
+
 def merge_folder(tensor_map, directory_path, p, lambda_val):
     keys1 = set(tensor_map.keys())
     # Some repos have both bin and safetensors, choose safetensors if so
@@ -71,6 +94,7 @@ def merge_folder(tensor_map, directory_path, p, lambda_val):
             for key in common_keys:
                 tensor1 = tensor_map[key]['tensor']
                 tensor2 = f.get_tensor(key)
+                tensor1, tensor2 = resize_tensors(tensor1, tensor2)
                 print("merging", key)
                 tensor_map[key]['tensor'] = tensor1 + lambda_val * merge_tensors(tensor1, tensor2, p)
     return tensor_map
