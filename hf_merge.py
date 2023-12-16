@@ -1,4 +1,5 @@
 from time import sleep
+from tqdm import tqdm
 import argparse
 import git
 import merge
@@ -77,12 +78,11 @@ def process_repos(output_dir, base_model, staging_model, repo_list_file, p, lamb
     download_repo(repos_to_process[0].strip(), base_model, dry_run)
     tensor_map = merge.map_tensors_to_files(base_model)
 
-    for i, repo in enumerate(repos_to_process[1:]):
+    for i, repo in enumerate(tqdm(repos_to_process[1:], desc='Merging Repos')):
         repo_name = repo.strip()
         delete_repo(staging_model, dry_run)
         download_repo(repo_name, staging_model, dry_run)
         do_merge(tensor_map, staging_model, p, lambda_val, dry_run)
-
 
     os.makedirs(output_dir, exist_ok=True)
     merge.copy_nontensor_files(base_model, output_dir)
