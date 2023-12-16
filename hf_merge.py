@@ -1,6 +1,7 @@
 from time import sleep
 from tqdm import tqdm
 import argparse
+import requests
 import git
 import merge
 import os
@@ -57,6 +58,40 @@ def delete_repo(path, dry_run=False):
         except Exception as e:
             print(f"Error deleting repository at {path}: {e}")
 
+def get_max_vocab_size(repo_list):
+    max_vocab_size = 0
+    repo_with_max_vocab = None
+
+    for line in repo_list:
+        repo_name = line.strip()
+        url = f"https://huggingface.co/{repo_name}/raw/main/config.json"
+
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            config = response.json()
+            vocab_size = config.get("vocab_size", 0)
+
+            if vocab_size > max_vocab_size:
+                max_vocab_size = vocab_size
+                repo_with_max_vocab = repo_name
+
+        except requests.RequestException as e:
+            print(f"Error fetching data from {url}: {e}")
+
+    return max_vocab_size, repo_with_max_vocab
+
+def download_json_files(repo_name, file_paths, output_dir):
+    base_url = f"https://huggingface.co/{repo_name}/raw/main/"
+
+    for file_path in file_paths:
+        url = base_url + file_path
+        response = requests.get(url)
+        if response.status_code == 200:
+            with open(os.path.join(output_dir, os.path.basename(file_path)), 'wb') as file:
+                file.write(response.content)
+        else:
+            print(f"Failed to download {file_path}")
 
 def process_repos(output_dir, base_model, staging_model, repo_list_file, p, lambda_val, dry_run=False):
     # Check if output_dir exists
@@ -86,6 +121,14 @@ def process_repos(output_dir, base_model, staging_model, repo_list_file, p, lamb
 
     os.makedirs(output_dir, exist_ok=True)
     merge.copy_nontensor_files(base_model, output_dir)
+
+    # Handle LLMs that add tokens by taking the largest
+    if os.path.exists(os.path.join(output_dir, 'config.json')):
+        max_vocab_size, repo_name = get_max_vocab_size(repos_to_process)
+        if max_vocab_size > 0:
+            file_paths = ['config.json', 'special_tokens_map.json', 'tokenizer.json', 'tokenizer_config.json']
+            download_json_files(repo_name, file_paths, output_dir)
+
     reset_directories([base_model, staging_model], dry_run)
     merge.save_tensor_map(tensor_map, output_dir)
 
