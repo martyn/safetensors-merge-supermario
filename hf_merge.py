@@ -83,8 +83,10 @@ def process_repos(output_dir, base_model, staging_model, repo_list_file, p, lamb
         download_repo(repo_name, staging_model, dry_run)
         do_merge(tensor_map, staging_model, p, lambda_val, dry_run)
 
+
     os.makedirs(output_dir, exist_ok=True)
     merge.copy_nontensor_files(base_model, output_dir)
+    reset_directories([base_model, staging_model], dry_run)
     merge.save_tensor_map(tensor_map, output_dir)
 
 if __name__ == "__main__":

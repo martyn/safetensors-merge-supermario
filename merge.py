@@ -3,13 +3,14 @@ import numpy as np
 import os
 import shutil
 import torch
+import torch.nn.functional as F
 from safetensors.torch import safe_open, save_file
 
 def merge_tensors(tensor1, tensor2, p):
     # Calculate the delta of the weights
-    delta = tensor2.to(tensor1.dtype).to(tensor1.device) - tensor1
+    delta = tensor2 - tensor1
     # Generate the mask m^t from Bernoulli distribution
-    m = torch.from_numpy(np.random.binomial(1, p, delta.shape)).to(tensor1.dtype).to(tensor1.device)
+    m = torch.from_numpy(np.random.binomial(1, p, delta.shape)).to(tensor1.dtype)
     # Apply the mask to the delta to get δ̃^t
     delta_tilde = m * delta
     # Scale the masked delta by the dropout rate to get δ̂^t
@@ -44,7 +45,7 @@ def read_tensors(file_path, ext):
         f = safe_open(file_path, framework="pt", device="cpu")
         return f, set(f.keys())
     if ext == ".bin" and file_path.endswith(".bin"):
-        data = torch.load(file_path)
+        data = torch.load(file_path, map_location=torch.device('cpu'))
         f = BinDataHandler(data)
         return f, set(data.keys())
     return None, None
