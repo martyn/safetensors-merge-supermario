@@ -92,10 +92,12 @@ def merge_folder(tensor_map, directory_path, p, lambda_val):
         if keys2:
             common_keys = keys1.intersection(keys2)
             for key in common_keys:
+                if "gate" in key:
+                    print("Skipping", key)
+                    continue
                 tensor1 = tensor_map[key]['tensor']
                 tensor2 = f.get_tensor(key)
                 tensor1, tensor2 = resize_tensors(tensor1, tensor2)
-                print("merging", key)
                 tensor_map[key]['tensor'] = tensor1 + lambda_val * merge_tensors(tensor1, tensor2, p)
     return tensor_map
 
@@ -115,7 +117,7 @@ def map_tensors_to_files(directory_path):
 def copy_nontensor_files(from_path, to_path):
     for filename in os.listdir(from_path):
         file_path = os.path.join(from_path, filename)
-        if from_path != to_path and not filename.startswith(".") and not filename.startswith("README") and not filename.endswith(".bin") and not filename.endswith(".safetensors") and not os.path.isdir(file_path):
+        if from_path != to_path and not filename.startswith(".") and not filename.startswith("README") and not filename.endswith(".bin") and not filename.endswith(".safetensors") and not filename.endswith(".pt") and not os.path.isdir(file_path):
             print(f"Copying {file_path} to {to_path}")
             shutil.copyfile(file_path, to_path+'/'+filename)
 
