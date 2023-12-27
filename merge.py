@@ -92,8 +92,10 @@ def merge_folder(tensor_map, directory_path, p, lambda_val):
         if keys2:
             common_keys = keys1.intersection(keys2)
             for key in common_keys:
-                if "gate" in key:
-                    print("Skipping", key)
+                if "block_sparse_moe.gate" in key:
+                    tensor1 = tensor_map[key]['tensor']
+                    tensor2 = f.get_tensor(key)
+                    tensor_map[key]['tensor'] = (tensor1 + tensor2) /2.0
                     continue
                 tensor1 = tensor_map[key]['tensor']
                 tensor2 = f.get_tensor(key)
