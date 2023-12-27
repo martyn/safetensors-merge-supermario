@@ -45,6 +45,7 @@ Note: This also works with arguments reversed.
 
 ## Changelog
 
+* Dec 27 2023: Added mergekit-compatible yaml support for `hf_merge.py`. Always runs dare and ignores options outside model specification. weight is p and density is 1/λ.
 * Dec 12 2023: Added `hf_merge.py` for merging hf repos.
 * Dec 12 2023: Added support for folders. You can now merge LLMs(mistral, llama, etc) and other large models. Folders with `.bin` files are supported - the first specified model in the cli must be in `.safetensors` format.
 * Nov 28 2023: Initial release supporting stable diffusion.

@@ -7,10 +7,11 @@ import merge
 import os
 import shutil
 import sys
+import yaml
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Merge HuggingFace models")
-    parser.add_argument('repo_list', type=str, help='File containing list of repositories to merge')
+    parser.add_argument('repo_list', type=str, help='File containing list of repositories to merge, supports mergekit yaml or txt')
     parser.add_argument('output_dir', type=str, help='Directory for the merged models')
     parser.add_argument('-base_model', type=str, default='staging/base_model', help='Base model directory')
     parser.add_argument('-staging_model', type=str, default='staging/merge_model', help='Staging model directory')
@@ -18,6 +19,27 @@ def parse_arguments():
     parser.add_argument('-lambda', dest='lambda_val', type=float, default=1.0, help='Scaling factor for the weight delta')
     parser.add_argument('--dry', action='store_true', help='Run in dry mode without making any changes')
     return parser.parse_args()
+
+def repo_list_generator(file_path, default_p, default_lambda_val):
+    _, file_extension = os.path.splitext(file_path)
+
+    # Branching based on file extension
+    if file_extension.lower() == '.yaml' or file_extension.lower() == ".yml":
+        with open(file_path, 'r') as file:
+            data = yaml.safe_load(file)
+
+        for model_info in data['models']:
+            model_name = model_info['model']
+            p = model_info.get('parameters', {}).get('weight', default_p)
+            lambda_val = 1 / model_info.get('parameters', {}).get('density', default_lambda_val)
+            yield model_name, p, lambda_val
+
+    else:  # Defaulting to txt file processing
+        with open(file_path, "r") as file:
+            repos_to_process = file.readlines()
+
+        for repo in repos_to_process:
+            yield repo.strip(), default_p, default_lambda_val
 
 def reset_directories(directories, dry_run):
     for directory in directories:
@@ -38,14 +60,35 @@ def do_merge(tensor_map, staging_path, p, lambda_val, dry_run=False):
             print("Merge operation completed successfully.")
         except Exception as e:
             print(f"Error during merge operation: {e}")
+    return tensor_map
 
+def clone_safetensors_only(repo_name, path):
+    # Initialize an empty repository
+    repo = git.Repo.init(path)
 
-def download_repo(repo_name, path, dry_run=False):
+    # Configure sparse checkout
+    repo.git.config('core.sparseCheckout', 'true')
+
+    # Write the sparse-checkout file to define the pattern
+    with open(os.path.join(path, '.git', 'info', 'sparse-checkout'), 'w') as sc_file:
+        sc_file.write('*.safetensors')
+
+    # Perform a shallow clone (depth 1) from the remote
+    repo.git.remote('add', 'origin', f'https://huggingface.co/{repo_name}')
+    repo.git.pull('origin', 'main', '--depth=1')
+
+def download_repo(repo_name, path, dry_run=False, safetensors_only=False):
     if dry_run:
         print(f"[DRY RUN] Would download repository {repo_name} to {path}")
     else:
         print(f"Repository {repo_name} cloning.")
-        git.Repo.clone_from(f"https://huggingface.co/{repo_name}", path, depth=1)
+        if safetensors_only:
+            clone_safetensors_only(repo_name, path)
+        else:
+            try:
+                git.Repo.clone_from(f"https://huggingface.co/{repo_name}", path, depth=1)
+            except:
+                pass
         print(f"Repository {repo_name} cloned successfully.")
 
 def delete_repo(path, dry_run=False):
@@ -62,8 +105,8 @@ def get_max_vocab_size(repo_list):
     max_vocab_size = 0
     repo_with_max_vocab = None
 
-    for line in repo_list:
-        repo_name = line.strip()
+    for repo in repo_list:
+        repo_name = repo[0].strip()
         url = f"https://huggingface.co/{repo_name}/raw/main/config.json"
 
         try:
@@ -105,19 +148,21 @@ def process_repos(output_dir, base_model, staging_model, repo_list_file, p, lamb
     os.makedirs(base_model, exist_ok=True)
     os.makedirs(staging_model, exist_ok=True)
 
-    repos_to_process = []
-    with open(repo_list_file, "r") as file:
-        repos_to_process = file.readlines()
+    repo_list_gen = repo_list_generator(repo_list_file, p, lambda_val)
+
+    repos_to_process = list(repo_list_gen)
 
     # Initial download for 'base_model'
-    download_repo(repos_to_process[0].strip(), base_model, dry_run)
+    download_repo(repos_to_process[0][0].strip(), base_model, dry_run, safetensors_only=False)
     tensor_map = merge.map_tensors_to_files(base_model)
 
     for i, repo in enumerate(tqdm(repos_to_process[1:], desc='Merging Repos')):
-        repo_name = repo.strip()
+        repo_name = repo[0].strip()
+        repo_p = repo[1]
+        repo_lambda = repo[2]
         delete_repo(staging_model, dry_run)
-        download_repo(repo_name, staging_model, dry_run)
-        do_merge(tensor_map, staging_model, p, lambda_val, dry_run)
+        download_repo(repo_name, staging_model, dry_run, safetensors_only=False)
+        tensor_map = do_merge(tensor_map, staging_model, repo_p, repo_lambda, dry_run)
 
     os.makedirs(output_dir, exist_ok=True)
     merge.copy_nontensor_files(base_model, output_dir)
