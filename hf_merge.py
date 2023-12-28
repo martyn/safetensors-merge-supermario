@@ -79,7 +79,7 @@ def download_or_link_repo(repo_name, path, dry_run=False):
     symlink, is_file = should_create_symlink(repo_name)
 
     if symlink and is_file:
-        os.makedirs(path, exists_ok=True)
+        os.makedirs(path, exist_ok=True)
         symlink_path = os.path.join(path, os.path.basename(repo_name))
         os.symlink(repo_name, symlink_path)
     elif symlink:
