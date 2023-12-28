@@ -62,34 +62,30 @@ def do_merge(tensor_map, staging_path, p, lambda_val, dry_run=False):
             print(f"Error during merge operation: {e}")
     return tensor_map
 
-def clone_safetensors_only(repo_name, path):
-    # Initialize an empty repository
-    repo = git.Repo.init(path)
-
-    # Configure sparse checkout
-    repo.git.config('core.sparseCheckout', 'true')
-
-    # Write the sparse-checkout file to define the pattern
-    with open(os.path.join(path, '.git', 'info', 'sparse-checkout'), 'w') as sc_file:
-        sc_file.write('*.safetensors')
-
-    # Perform a shallow clone (depth 1) from the remote
-    repo.git.remote('add', 'origin', f'https://huggingface.co/{repo_name}')
-    repo.git.pull('origin', 'main', '--depth=1')
-
-def download_repo(repo_name, path, dry_run=False, safetensors_only=False):
+def download_repo(repo_name, path, dry_run=False):
     if dry_run:
         print(f"[DRY RUN] Would download repository {repo_name} to {path}")
     else:
         print(f"Repository {repo_name} cloning.")
-        if safetensors_only:
-            clone_safetensors_only(repo_name, path)
-        else:
-            try:
-                git.Repo.clone_from(f"https://huggingface.co/{repo_name}", path, depth=1)
-            except:
-                pass
+        git.Repo.clone_from(f"https://huggingface.co/{repo_name}", path, depth=1)
         print(f"Repository {repo_name} cloned successfully.")
+
+def should_create_symlink(repo_name):
+    if os.path.exists(repo_name):
+        return True, os.path.isfile(repo_name)
+    return False, False
+
+def download_or_link_repo(repo_name, path, dry_run=False):
+    symlink, is_file = should_create_symlink(repo_name)
+
+    if symlink and is_file:
+        os.makedirs(path, exists_ok=True)
+        symlink_path = os.path.join(path, os.path.basename(repo_name))
+        os.symlink(repo_name, symlink_path)
+    elif symlink:
+        os.symlink(repo_name, path)
+    else:
+        download_repo(repo_name, path, dry_run)
 
 def delete_repo(path, dry_run=False):
     if dry_run:
@@ -153,7 +149,7 @@ def process_repos(output_dir, base_model, staging_model, repo_list_file, p, lamb
     repos_to_process = list(repo_list_gen)
 
     # Initial download for 'base_model'
-    download_repo(repos_to_process[0][0].strip(), base_model, dry_run, safetensors_only=False)
+    download_or_link_repo(repos_to_process[0][0].strip(), base_model, dry_run)
     tensor_map = merge.map_tensors_to_files(base_model)
 
     for i, repo in enumerate(tqdm(repos_to_process[1:], desc='Merging Repos')):
@@ -161,7 +157,7 @@ def process_repos(output_dir, base_model, staging_model, repo_list_file, p, lamb
         repo_p = repo[1]
         repo_lambda = repo[2]
         delete_repo(staging_model, dry_run)
-        download_repo(repo_name, staging_model, dry_run, safetensors_only=False)
+        download_or_link_repo(repo_name, staging_model, dry_run)
         tensor_map = do_merge(tensor_map, staging_model, repo_p, repo_lambda, dry_run)
 
     os.makedirs(output_dir, exist_ok=True)
