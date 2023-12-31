@@ -1,6 +1,6 @@
 # safetensors-merge-supermario
 
-Combine any two models using a Super Mario merge as described in the linked whitepaper.
+Combine any two models using a Super Mario merge(DARE) as described in the linked whitepaper.
 
 ## About
 
@@ -38,6 +38,8 @@ Note: This also works with arguments reversed.
 * https://huggingface.co/martyn/sdxl-turbo-mario-merge - SD Turbo XL merged with SDXL Base
 * https://civitai.com/models/215796 - Top Rated - TurboXL+LCM - Super Mario Merge
 * https://huggingface.co/martyn/llama-megamerge-dare-13b - A llama 13b mega merge created using `hf_merge.py`
+* https://huggingface.co/collections/martyn/dare-llm-merges-6581f52c0fb25b9aa26fb180 - A collection of LLM merges
+* https://huggingface.co/collections/martyn/dare-diffusion-merges-6581f5fab1c4ab777ad43cf7 - A collection of text-to-image diffusion model merges
 
 ## ComfyUI workflow
 
