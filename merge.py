@@ -10,7 +10,7 @@ def merge_tensors(tensor1, tensor2, p):
     # Calculate the delta of the weights
     delta = tensor2 - tensor1
     # Generate the mask m^t from Bernoulli distribution
-    m = torch.from_numpy(np.random.binomial(1, p, delta.shape)).to(tensor1.dtype)
+    m = torch.bernoulli(torch.full(delta.shape, p))
     # Apply the mask to the delta to get δ̃^t
     delta_tilde = m * delta
     # Scale the masked delta by the dropout rate to get δ̂^t
@@ -73,7 +73,7 @@ def resize_tensors(tensor1, tensor2):
 
     return tensor1, tensor2
 
-def merge_folder(tensor_map, directory_path, p, lambda_val):
+def merge_folder(source_map, tensor_map, directory_path, p, lambda_val, diff_only=False):
     keys1 = set(tensor_map.keys())
     # Some repos have both bin and safetensors, choose safetensors if so
     ext = None
@@ -97,10 +97,16 @@ def merge_folder(tensor_map, directory_path, p, lambda_val):
                     tensor2 = f.get_tensor(key)
                     tensor_map[key]['tensor'] = (tensor1 + tensor2) /2.0
                     continue
-                tensor1 = tensor_map[key]['tensor']
+                tensor1 = source_map[key]['tensor']
                 tensor2 = f.get_tensor(key)
                 tensor1, tensor2 = resize_tensors(tensor1, tensor2)
-                tensor_map[key]['tensor'] = tensor1 + lambda_val * merge_tensors(tensor1, tensor2, p)
+                diff = lambda_val * merge_tensors(tensor1, tensor2, p)
+                if diff_only:
+                    tensor1, diff = resize_tensors(tensor_map[key]['tensor'], diff)
+                    tensor_map[key]['tensor'] = tensor1
+                    tensor_map[key]['tensor'] += diff
+                else:
+                    tensor_map[key]['tensor'] = tensor1 + diff
     return tensor_map
 
 def map_tensors_to_files(directory_path):
