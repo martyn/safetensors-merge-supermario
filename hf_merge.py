@@ -87,12 +87,13 @@ def delete_repo(path):
     except Exception as e:
         print(f"Error deleting repository at {path}: {e}")
 
-def get_max_vocab_size(repo_list):
+def get_max_vocab_size(models):
     max_vocab_size = 0
     repo_with_max_vocab = None
 
-    for repo in repo_list:
-        repo_name = repo[0].strip()
+    for repo in models:
+        #TODO local
+        repo_name = repo[0]
         url = f"https://huggingface.co/{repo_name}/raw/main/config.json"
 
         try:
@@ -153,7 +154,7 @@ def process_repos(output_dir, base_model_path, staging_model_path, models, lambd
 
     # Handle LLMs that add tokens by taking the largest
     if os.path.exists(os.path.join(output_dir, 'config.json')):
-        max_vocab_size, repo_name = get_max_vocab_size(repos_to_process)
+        max_vocab_size, repo_name = get_max_vocab_size(models)
         if max_vocab_size > 0:
             file_paths = ['config.json', 'special_tokens_map.json', 'tokenizer.json', 'tokenizer_config.json']
             download_json_files(repo_name, file_paths, output_dir)
@@ -162,7 +163,7 @@ def process_repos(output_dir, base_model_path, staging_model_path, models, lambd
     normalize_tensor_map(tensor_map, norm)
     for key in tensor_map:
         tensor1, tensor2 = merge.resize_tensors(base_tensor_map[key]['tensor'], tensor_map[key]['tensor'])
-        tensor_map[key]['tensor'] = tensor1 + tensor2
+        tensor_map[key]['tensor'] = tensor1 + lambda_val * tensor2
     print("Normalize complete")
 
     #reset_directories([base_model, staging_model_path])
@@ -173,5 +174,5 @@ if __name__ == "__main__":
     if args.seed is not None:
         torch.manual_seed(args.seed)
 
-    models, default_lambda, default_norm = load_models_list(args.model_list, args.lambda_val, args.p, args.norm)
+    models, default_lambda, default_norm = load_models_list(args.model_list, args.lambda_val, args.norm, args.p)
     process_repos(args.output_dir, args.base_model_path, args.staging_model_path, models, default_lambda, default_norm)
