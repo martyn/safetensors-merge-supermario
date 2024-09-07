@@ -1,3 +1,4 @@
+from pathlib import Path
 from time import sleep
 from tqdm import tqdm
 import argparse
@@ -13,8 +14,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Merge HuggingFace models")
     parser.add_argument('repo_list', type=str, help='File containing list of repositories to merge, supports mergekit yaml or txt')
     parser.add_argument('output_dir', type=str, help='Directory for the merged models')
-    parser.add_argument('-base_model', type=str, default='staging/base_model', help='Base model directory')
-    parser.add_argument('-staging_model', type=str, default='staging/merge_model', help='Staging model directory')
+    parser.add_argument('-staging', type=str, default='./staging', help='Path to staging folder')
     parser.add_argument('-p', type=float, default=0.5, help='Dropout probability')
     parser.add_argument('-lambda', dest='lambda_val', type=float, default=1.0, help='Scaling factor for the weight delta')
     parser.add_argument('--dry', action='store_true', help='Run in dry mode without making any changes')
@@ -47,7 +47,11 @@ def reset_directories(directories, dry_run):
             if dry_run:
                 print(f"[DRY RUN] Would delete directory {directory}")
             else:
-                shutil.rmtree(directory)
+                # Check if the directory is a symlink
+                if os.path.islink(directory):
+                    os.unlink(directory)  # Remove the symlink
+                else:
+                    shutil.rmtree(directory, ignore_errors=False)
                 print(f"Directory {directory} deleted successfully.")
 
 def do_merge(tensor_map, staging_path, p, lambda_val, dry_run=False):
@@ -140,10 +144,6 @@ def process_repos(output_dir, base_model, staging_model, repo_list_file, p, lamb
     # Reset base and staging directories
     reset_directories([base_model, staging_model], dry_run)
 
-    # Make sure staging and output directories exist
-    os.makedirs(base_model, exist_ok=True)
-    os.makedirs(staging_model, exist_ok=True)
-
     repo_list_gen = repo_list_generator(repo_list_file, p, lambda_val)
 
     repos_to_process = list(repo_list_gen)
@@ -175,5 +175,7 @@ def process_repos(output_dir, base_model, staging_model, repo_list_file, p, lamb
 
 if __name__ == "__main__":
     args = parse_arguments()
-    process_repos(args.output_dir, args.base_model, args.staging_model, args.repo_list, args.p, args.lambda_val, args.dry)
+    staging_path = Path(args.staging)
+    os.makedirs(args.staging, exist_ok=True)
+    process_repos(args.output_dir, staging_path / 'base_model', staging_path / 'staging_model', args.repo_list, args.p, args.lambda_val, args.dry)
 
