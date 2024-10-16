@@ -9,6 +9,7 @@ import os
 import shutil
 import sys
 import yaml
+from huggingface_hub import snapshot_download
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Merge HuggingFace models")
@@ -67,12 +68,16 @@ def do_merge(tensor_map, staging_path, p, lambda_val, dry_run=False):
     return tensor_map
 
 def download_repo(repo_name, path, dry_run=False):
-    if dry_run:
-        print(f"[DRY RUN] Would download repository {repo_name} to {path}")
+    # Check if the path already exists and contains files
+    if os.path.exists(path) and os.listdir(path):
+        print(f"Repository {repo_name} already exists at {path}. Skipping download.")
     else:
-        print(f"Repository {repo_name} cloning.")
-        git.Repo.clone_from(f"https://huggingface.co/{repo_name}", path, depth=1)
-        print(f"Repository {repo_name} cloned successfully.")
+        if dry_run:
+            print(f"[DRY RUN] Would download the entire repository {repo_name} to {path}")
+        else:
+            print(f"Downloading the entire repository {repo_name}.")
+            snapshot_download(repo_id=repo_name, cache_dir=path)
+            print(f"Repository {repo_name} downloaded successfully to {path}.")
 
 def should_create_symlink(repo_name):
     if os.path.exists(repo_name):
