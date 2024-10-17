@@ -10,6 +10,7 @@ import shutil
 import sys
 import yaml
 from huggingface_hub import snapshot_download
+from huggingface_hub import HfApi, hf_hub_download
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Merge HuggingFace models")
@@ -68,16 +69,34 @@ def do_merge(tensor_map, staging_path, p, lambda_val, dry_run=False):
     return tensor_map
 
 def download_repo(repo_name, path, dry_run=False):
-    # Check if the path already exists and contains files
-    if os.path.exists(path) and os.listdir(path):
-        print(f"Repository {repo_name} already exists at {path}. Skipping download.")
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    api = HfApi()
+    
+    # Get the list of all files in the repository using HfApi
+    repo_files = api.list_repo_files(repo_name)
+
+    if dry_run:
+        print(f"[DRY RUN] Would download the following files from {repo_name} to {path}:")
+        for file_path in repo_files:
+            print(file_path)
     else:
-        if dry_run:
-            print(f"[DRY RUN] Would download the entire repository {repo_name} to {path}")
-        else:
-            print(f"Downloading the entire repository {repo_name}.")
-            snapshot_download(repo_id=repo_name, cache_dir=path)
-            print(f"Repository {repo_name} downloaded successfully to {path}.")
+        print(f"Downloading the entire repository {repo_name} directly to {path}.")
+        
+        for file_path in repo_files:
+            print(f"Downloading {path}/{file_path}...")
+
+            # Download each file directly to the specified path
+            hf_hub_download(
+                repo_id=repo_name, 
+                filename=file_path, 
+                cache_dir=path,
+                local_dir=path,  # Store directly in the target directory
+                local_dir_use_symlinks=False  # Ensure symlinks are not used
+            )
+
+        print(f"Repository {repo_name} downloaded successfully to {path}.")
 
 def should_create_symlink(repo_name):
     if os.path.exists(repo_name):
